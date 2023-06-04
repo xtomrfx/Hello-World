@@ -1,0 +1,80 @@
+
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log notice;
+pid        /var/run/nginx.pid;
+
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+#    include /etc/nginx/conf.d/*.conf;
+    
+    upstream api_server {
+        server 10.1.20.11;
+        server 10.1.20.12;
+    }
+
+#    upstream api_server {
+#      server 10.1.10.34:88;
+#    }
+
+    server {
+     
+       listen 88;
+       root /var/www/public_html;
+       
+       location /private/ {
+          auth_jwt "Google account" token=$cookie_auth_token;
+          auth_jwt_key_file /etc/nginx/google_certs.jwk;
+       }
+ 
+       location /f5demo/ {
+          auth_jwt "Google account" token=$cookie_auth_token;
+          auth_jwt_key_file /etc/nginx/google_certs.jwk;
+          proxy_pass http://api_server/;
+       }      
+
+    }
+
+
+}
+
+
+# TCP/UDP proxy and load balancing block
+#
+#stream {
+    # Example configuration for TCP load balancing
+
+    #upstream stream_backend {
+    #    zone tcp_servers 64k;
+    #    server backend1.example.com:12345;
+    #    server backend2.example.com:12345;
+    #}
+
+    #server {
+    #    listen 12345;
+    #    status_zone tcp_server;
+    #    proxy_pass stream_backend;
+    #}
+#}
